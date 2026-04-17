@@ -1,0 +1,2 @@
+Adafruit BME280 Library
+Adafruit Unified Sensor
