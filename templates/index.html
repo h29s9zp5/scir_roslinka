@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌱 System Monitorowania Roślin</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        body {
+            background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .dashboard-card {
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+        }
+        .temp-card { border-left: 5px solid #ff6b6b; }
+        .hum-card { border-left: 5px solid #4ecdc4; }
+        .press-card { border-left: 5px solid #45b7d1; }
+        .soil-card { border-left: 5px solid #96ceb4; }
+        .value-display {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+        .unit {
+            font-size: 1rem;
+            color: #666;
+        }
+        .status-ok {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .status-warning {
+            color: #ffc107;
+            font-weight: bold;
+        }
+        .status-danger {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1 class="text-center">
+            🌱 System Monitorowania Warunków Roślin
+            <small class="text-muted">Sieci czujnikowe i IoT</small>
+        </h1>
+        
+        <!-- Karty z aktualnymi wartościami -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card dashboard-card temp-card">
+                    <div class="card-body">
+                        <h5 class="card-title">🌡️ Temperatura</h5>
+                        <p class="value-display" id="akt_temp">--</p>
+                        <p class="unit">stopnie Celsjusza (°C)</p>
+                        <span id="temp_status"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card dashboard-card hum-card">
+                    <div class="card-body">
+                        <h5 class="card-title">💧 Wilgotność powietrza</h5>
+                        <p class="value-display" id="akt_wilg">--</p>
+                        <p class="unit">procent (%)</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card dashboard-card press-card">
+                    <div class="card-body">
+                        <h5 class="card-title">📊 Ciśnienie</h5>
+                        <p class="value-display" id="akt_cisn">--</p>
+                        <p class="unit">hektopaskale (hPa)</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card dashboard-card soil-card">
+                    <div class="card-body">
+                        <h5 class="card-title">🪴 Wilgotność gleby</h5>
+                        <p class="value-display" id="akt_gleba">--</p>
+                        <p class="unit">procent (%)</p>
+                        <span id="gleba_status"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Wykresy -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card dashboard-card">
+                    <div class="card-body">
+                        <h5 class="card-title">📈 Temperatura w czasie</h5>
+                        <canvas id="tempChart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card dashboard-card">
+                    <div class="card-body">
+                        <h5 class="card-title">💧 Wilgotność powietrza w czasie</h5>
+                        <canvas id="humChart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card dashboard-card">
+                    <div class="card-body">
+                        <h5 class="card-title">📊 Ciśnienie w czasie</h5>
+                        <canvas id="pressChart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card dashboard-card">
+                    <div class="card-body">
+                        <h5 class="card-title">🪴 Wilgotność gleby w czasie</h5>
+                        <canvas id="soilChart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Tabela z historią pomiarów -->
+        <div class="card dashboard-card">
+            <div class="card-body">
+                <h5 class="card-title">📋 Historia pomiarów (ostatnie 20)</h5>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-success">
+                            <tr>
+                                <th>Data i czas</th>
+                                <th>Temperatura (°C)</th>
+                                <th>Wilgotnosc (%)</th>
+                                <th>Ciśnienie (hPa)</th>
+                                <th>Wilgotnosc gleby (%)</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela_pomiarow">
+                            <tr>
+                                <td colspan="6" class="text-center">Ładowanie danych...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Projekt na przedmiot: Sieci czujnikowe i internet rzeczy | Politechnika Warszawska</p>
+            <p>Dane aktualizowane automatycznie co 20 sekund</p>
+        </footer>
+    </div>
+    
+    <script>
+        // Zmienne dla wykresów
+        let tempChart, humChart, pressChart, soilChart;
+        
+        // Inicjalizacja wykresów
+        function inicjalizujWykresy() {
+            tempChart = new Chart(document.getElementById('tempChart'), {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: 'Temperatura (°C)', data: [], borderColor: '#ff6b6b', backgroundColor: 'rgba(255,107,107,0.1)', fill: true }] },
+                options: { responsive: true, maintainAspectRatio: true }
+            });
+            
+            humChart = new Chart(document.getElementById('humChart'), {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: 'Wilgotność (%)', data: [], borderColor: '#4ecdc4', backgroundColor: 'rgba(78,205,196,0.1)', fill: true }] },
+                options: { responsive: true, maintainAspectRatio: true }
+            });
+            
+            pressChart = new Chart(document.getElementById('pressChart'), {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: 'Ciśnienie (hPa)', data: [], borderColor: '#45b7d1', backgroundColor: 'rgba(69,183,209,0.1)', fill: true }] },
+                options: { responsive: true, maintainAspectRatio: true }
+            });
+            
+            soilChart = new Chart(document.getElementById('soilChart'), {
+                type: 'line',
+                data: { labels: [], datasets: [{ label: 'Wilgotność gleby (%)', data: [], borderColor: '#96ceb4', backgroundColor: 'rgba(150,206,180,0.1)', fill: true }] },
+                options: { responsive: true, maintainAspectRatio: true }
+            });
+        }
+        
+        // Funkcja określająca status na podstawie wartości
+        function statusGleby(wartosc) {
+            if (wartosc >= 60) return '<span class="status-ok">✓ Optymalna</span>';
+            if (wartosc >= 30) return '<span class="status-warning">⚠️ Umiarkowana</span>';
+            return '<span class="status-danger">🔴 Podlej roślinę!</span>';
+        }
+        
+        function statusTemperatury(wartosc) {
+            if (wartosc >= 18 && wartosc <= 26) return '<span class="status-ok">✓ Optymalna</span>';
+            if (wartosc >= 15 && wartosc < 18) return '<span class="status-warning">⚠️ Chłodnawo</span>';
+            if (wartosc > 26 && wartosc <= 30) return '<span class="status-warning">⚠️ Ciepławo</span>';
+            return '<span class="status-danger">⚠️ Poza zakresem</span>';
+        }
+        
+        // Główna funkcja pobierająca dane i aktualizująca interfejs
+        function odswiezDane() {
+            fetch('/api/dane')
+                .then(response => response.json())
+                .then(dane => {
+                    if (dane.length === 0) return;
+                    
+                    // Aktualne wartości (ostatni pomiar)
+                    const ostatni = dane[dane.length - 1];
+                    document.getElementById('akt_temp').innerHTML = ostatni.temperatura ? ostatni.temperatura.toFixed(1) : '--';
+                    document.getElementById('akt_wilg').innerHTML = ostatni.wilgotnosc ? ostatni.wilgotnosc.toFixed(1) : '--';
+                    document.getElementById('akt_cisn').innerHTML = ostatni.cisnienie ? ostatni.cisnienie.toFixed(0) : '--';
+                    document.getElementById('akt_gleba').innerHTML = ostatni.gleba ? ostatni.gleba.toFixed(0) : '--';
+                    
+                    document.getElementById('temp_status').innerHTML = ostatni.temperatura ? statusTemperatury(ostatni.temperatura) : '';
+                    document.getElementById('gleba_status').innerHTML = ostatni.gleba ? statusGleby(ostatni.gleba) : '';
+                    
+                    // Przygotowanie danych dla wykresów
+                    const etykiety = dane.map(p => {
+                        const data = new Date(p.czas);
+                        return data.toLocaleTimeString();
+                    });
+                    const tempData = dane.map(p => p.temperatura);
+                    const humData = dane.map(p => p.wilgotnosc);
+                    const pressData = dane.map(p => p.cisnienie);
+                    const soilData = dane.map(p => p.gleba);
+                    
+                    // Aktualizacja wykresów
+                    tempChart.data.labels = etykiety;
+                    tempChart.data.datasets[0].data = tempData;
+                    tempChart.update();
+                    
+                    humChart.data.labels = etykiety;
+                    humChart.data.datasets[0].data = humData;
+                    humChart.update();
+                    
+                    pressChart.data.labels = etykiety;
+                    pressChart.data.datasets[0].data = pressData;
+                    pressChart.update();
+                    
+                    soilChart.data.labels = etykiety;
+                    soilChart.data.datasets[0].data = soilData;
+                    soilChart.update();
+                    
+                    // Aktualizacja tabeli
+                    const tabela = document.getElementById('tabela_pomiarow');
+                    tabela.innerHTML = '';
+                    dane.slice().reverse().forEach(p => {
+                        const wiersz = tabela.insertRow();
+                        const data = new Date(p.czas);
+                        wiersz.insertCell(0).innerHTML = data.toLocaleString();
+                        wiersz.insertCell(1).innerHTML = p.temperatura ? p.temperatura.toFixed(1) : '--';
+                        wiersz.insertCell(2).innerHTML = p.wilgotnosc ? p.wilgotnosc.toFixed(1) : '--';
+                        wiersz.insertCell(3).innerHTML = p.cisnienie ? p.cisnienie.toFixed(0) : '--';
+                        wiersz.insertCell(4).innerHTML = p.gleba ? p.gleba.toFixed(0) : '--';
+                        wiersz.insertCell(5).innerHTML = p.gleba ? statusGleby(p.gleba) : '--';
+                    });
+                });
+        }
+        
+        // Start
+        inicjalizujWykresy();
+        odswiezDane();
+        setInterval(odswiezDane, 20000);  // odświeżanie co 20 sekund
+    </script>
+</body>
+</html>
