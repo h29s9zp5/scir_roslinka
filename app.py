@@ -37,13 +37,13 @@ def pobierz_dane_z_thingspeak(ilosc=20):
 @app.route("/")
 def index():
     """Strona główna z dashboardem"""
-    pomiary = pobierz_dane_z_thingspeak(20)
+    pomiary = pobierz_dane_z_thingspeak(8000)
     return render_template("index.html", pomiary=pomiary)
 
 @app.route("/api/dane")
 def api_dane():
     """Endpoint API dla odświeżania danych (AJAX)"""
-    pomiary = pobierz_dane_z_thingspeak(20)
+    pomiary = pobierz_dane_z_thingspeak(8000)
     return jsonify(pomiary)
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
